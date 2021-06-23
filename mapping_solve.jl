@@ -2,8 +2,8 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("Moire_test.msh")
-writevtk(model, "Moire_test")
+model = GmshDiscreteModel("./MoireImages/Moire_7.msh")
+writevtk(model, "./MoireImages/Moire_7")
 
 const ν = 0.0
 const λ = ν / ((1+ν)*(1-2ν))
@@ -29,7 +29,7 @@ g⊥ = [0 1; -1 0] * g; g⊥ = g⊥ / (g⊥⋅r)
 b⊥ = [0 1; -1 0] * b; b⊥ = b⊥ / (b⊥⋅g)
 
 
-lines = Dict("red" => -5:10, "green" => -10:3, "blue" => -11:14)
+lines = Dict("red" => -11:4, "green" => -2:10, "blue" => -13:12)
 dir = Dict("red" => VectorValue(r⊥),
            "green" => VectorValue(g⊥),
            "blue" => VectorValue(b⊥))
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"results_test",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoireImages/results_RegularSpline",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

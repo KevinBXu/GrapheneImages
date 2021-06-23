@@ -23,6 +23,7 @@ def main():
 
     white = (255, 255, 255)
 
+    #sort the pixels into proper colors
     for i in range(xs):
         for j in range (ys):
             location = (i,j)
@@ -47,6 +48,7 @@ def main():
                 else:
                     nodelist.append([location])
                     
+    #average together the nodes
     for group in nodelist:
         total = (0,0)
         for point in group:
@@ -56,17 +58,19 @@ def main():
         tmp["group"] = group
         avg.append(tmp)
 
+    #create the lines lists
     redlist.sort(key = lambda x : (x[1], x[0]))
     greenlist.sort(key = lambda x : (x[0], x[1]))
     bluelist.sort(key = lambda x : x[0] + x[1])
-
     redlines = create_lines(redlist)
     greenlines = create_lines(greenlist)
     bluelines = create_lines(bluelist)
 
+    #find the vortices
     nodes = find_vortexes(avg)
     nodes.sort(key = lambda x : (xs - x["coord"][0]) ** 2 + (ys - x["coord"][1]) ** 2)
 
+    #create the dictionaries for the lines and label the colors
     lines = []
     for line in redlines + greenlines + bluelines:
         line_dict = {}
@@ -84,6 +88,7 @@ def main():
                 node["lines"].append(line_dict)
         lines.append(line_dict)
 
+    #separate the segments
     segments = []
     for line in lines:
         points = line["coord"].copy()
@@ -117,9 +122,7 @@ def main():
                         break
             segments.append(segment)
 
-
-        return
-
+    #fix the segments
     for segment in segments:
         if len(segment["points"]) < 300:
             fix_lines(segments, segment)
@@ -134,6 +137,7 @@ def main():
     print_lines(accum)
     """
 
+    #label the segments with values and colors
     nodes.sort(key = lambda x : (xs / 2 - x["coord"][0]) + (ys / 2 - x["coord"][1]))
     first = nodes[0]
     for line in first["lines"]:
@@ -195,26 +199,28 @@ def main():
                 pending.append(neighbor)
         visited.append(search)
         
+    """
     for i in range (-15, 15):
         for line in lines:
             if "value" in line:
                 if line["value"] == i and line["color"] == "blue":
-                    #print(line["value"])
+                    print(line["value"])
                     tmp = line["coord"].copy()
                     tmp.append((xs, ys))
                     tmp.append((0, 0))
-                    #print_lines([tmp])
+                    print_lines([tmp])
+    """
 
+    #clean the segments that are too short
     segments.sort(key = lambda x : len(x["points"]), reverse = True)
     for segment in segments:
         if len(segment["endpoints"]) == 0:
             segments.remove(segment)
 
+    #determine the knots
     for segment in segments:
-
         segment["value"] = segment["line"]["value"]
         
-
         # fit the splines
         endpoint = segment["endpoints"][0]["coord"]
         all_points = segment["points"].copy()
@@ -233,7 +239,7 @@ def main():
         yi = data_i[1, :]
 
         parameter = x = np.linspace(0, 1, (len(xi)))
-        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.999)
+        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.9999)
 
         knots = scipy.interpolate.splev(tck[0], tck)
 
@@ -251,10 +257,15 @@ def main():
             if not redundant:
                 knot_points.append(point)
         for endpt in segment["endpoints"]:
-            knot_points.append(endpt["coord"])
+            if endpt is segment["endpoints"][0]:
+                knot_points.insert(0, endpt["coord"])
+            else:
+                knot_points.append(endpt["coord"])
 
         segment["knots"] = knot_points
 
+
+    #create the mesh
     mesh_points = set()
     for segment in segments:
         mesh_points = mesh_points.union(set(segment["knots"]))

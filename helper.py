@@ -72,7 +72,7 @@ def create_lines_check_all(lists):
             find_line_more(point, lines, len(lines), 7)
     return lines
 
-#recursively fixes the lines in the case that two lines do not catch
+#recursively fixes the lines in the case that one segment did not catch
 def fix_lines(neighbors, segment):
     for neighbor in neighbors:
             if segment["line"] == neighbor["line"] and neighbor != segment:
@@ -88,11 +88,13 @@ def fix_lines(neighbors, segment):
                             return
     return
 
+#print the lines using pyplot
 def print_lines(l):
     for line in l:
         plt.scatter(*zip(*(line)), s=0.25)
     plt.show()
 
+#create the mesh
 def create_mesh(segments, lines, points, xs, ys):
     point_dict = {}
     count = -1
@@ -100,17 +102,17 @@ def create_mesh(segments, lines, points, xs, ys):
         point_dict[point] = (count := count + 1) 
 
 
-    cLC = 10
-    cBOUNDARY = 10
+    cLC = 10.
 
     gmsh.initialize()
-
+    gmsh.option.setNumber("General.Terminal", 1)
     gmsh.model.add("Moire")
 
     boundary_points = [(0, 0), (0, ys), (xs, ys), (xs, 0)]
 
     for key in point_dict:
-        gmsh.model.geo.addPoint(key[0], key[1], 0, cLC, point_dict[key])
+        gmsh.model.geo.addPoint(key[0], key[1], 0.0, cLC, point_dict[key])
+
 
     boundary = []
     loop = 0
@@ -122,9 +124,12 @@ def create_mesh(segments, lines, points, xs, ys):
             boundary.append(gmsh.model.geo.addPoint(boundary_points[i][0], boundary_points[i][1], 0, cLC))
     boundary.append(loop)
 
+    print(boundary)
+
     tags = [None] * (len(boundary) - 1)
     for i in range(len(boundary) - 1):
         tags[i] = gmsh.model.geo.addLine(boundary[i], boundary[i+1])
+
     btag = gmsh.model.geo.addCurveLoop(tags, len(boundary))
     dtag = gmsh.model.geo.addPlaneSurface([btag])
     gmsh.model.geo.synchronize()
@@ -132,7 +137,6 @@ def create_mesh(segments, lines, points, xs, ys):
     gmsh.model.setPhysicalName(1, 1, "boundary")
     gmsh.model.addPhysicalGroup(2, [dtag], 1)
     gmsh.model.setPhysicalName(2, 1, "domain")
-
 
     for line in lines:
         if "value" not in line:
@@ -145,16 +149,15 @@ def create_mesh(segments, lines, points, xs, ys):
             for point in segment["knots"]:
                 knot_indexes.append(point_dict[point])
             spline_tags.append(gmsh.model.geo.addSpline(knot_indexes))
-
         gmsh.model.geo.synchronize()
-        ltag = gmsh.model.addPhysicalGroup(1, tags)
+        ltag = gmsh.model.addPhysicalGroup(1, spline_tags)
         gmsh.model.setPhysicalName(1, ltag, line["color"] + " " + str(line["value"]))
-        gmsh.model.mesh.embed(1, tags, 2, dtag)
-        gmsh.model.mesh.embed(1, tags, 2, dtag)
+        gmsh.model.mesh.embed(1, spline_tags, 2, dtag)
+
 
     gmsh.model.mesh.setAlgorithm(2, dtag, 1)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("")
-    gmsh.write("./Moire.msh")
-    gmsh.write("./Moire.vtk")
+    gmsh.write("./MoireImages/Moire_9.msh")
+    gmsh.write("./MoireImages/Moire_9.vtk")
     gmsh.finalize()
