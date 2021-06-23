@@ -148,7 +148,7 @@ def create_mesh(segments, lines, points, xs, ys, mesh_name):
             knot_indexes = []
             for point in segment["knots"]:
                 knot_indexes.append(point_dict[point])
-            spline_tags.append(gmsh.model.geo.addSpline(knot_indexes))
+            spline_tags.append(gmsh.model.geo.addBSpline(knot_indexes))
         gmsh.model.geo.synchronize()
         ltag = gmsh.model.addPhysicalGroup(1, spline_tags)
         gmsh.model.setPhysicalName(1, ltag, line["color"] + " " + str(line["value"]))

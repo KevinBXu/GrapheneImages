@@ -2,8 +2,8 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("./MoireImages/Moire_7.msh")
-writevtk(model, "./MoireImages/Moire_7")
+model = GmshDiscreteModel("./MoireImages/Weighted_BSpline.msh")
+writevtk(model, "Moire")
 
 const ν = 0.0
 const λ = ν / ((1+ν)*(1-2ν))
@@ -16,7 +16,7 @@ V0 = TestFESpace(model, reffe; conformity=:H1)
 U0 = TrialFESpace(V0)
 
 degree = 2order
-Ω = Triangulation(model)
+Ω = Triangulation(model)S
 dΩ = Measure(Ω, degree)
 
 # Basis vectors and reciprocal basis
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"./MoireImages/results_RegularSpline",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoireImages/Weighted_BSpline",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

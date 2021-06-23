@@ -6,45 +6,52 @@ from csaps import csaps
 import scipy as scipy
 import numpy as np
 from helper import distance, sum, div, find_line, find_line_more, create_lines, create_lines_check_all, print_lines, create_mesh, fix_lines
-
+import cv2 as cv
 
 def main():
-    im = Image.open ("combined.png")
+    image_name = "combined.png"
 
-    [xs, ys] = im.size
+    im = cv.imread(image_name)
 
-    redlist = []
-    greenlist = []
-    bluelist = []
-    nodelist = []
-    avg = []
+    b, g, r = cv.split(im)
 
-    found = False
+    redlines, bluelines, greenlines = [], [], []
+    for image in [r, g, b]:
+        n, labels = cv.connectedComponents(image)
 
-    white = (255, 255, 255)
+        if image is r:
+            redlines = [[] for x in range(n - 1)]
+            line = redlines
+        elif image is g:
+            greenlines = [[] for x in range(n - 1)]
+            line = greenlines
+        elif image is b:
+            bluelines = [[] for x in range(n - 1)]
+            line = bluelines
+
+        for idx, x in np.ndenumerate(labels):
+            if x != 0:
+                line[x - 1].append(idx)
+
+
+    [xs, ys] = im.shape[:2]
+
+    nodelist, avg = [], []
 
     #sort the pixels into proper colors
     for i in range(xs):
         for j in range (ys):
-            location = (i,j)
-            pixel = im.getpixel(location)
-            if pixel[0] == 255:
-                redlist.append(location)
-            if pixel[1] == 255:
-                greenlist.append(location)
-            if pixel[2] == 255:
-                bluelist.append(location)
-            if pixel == white:
+            location = (i, j)
+            pixel = im[i, j]
+            if np.array_equal(pixel, [255, 255, 255]):
                 for group in nodelist:
-                    if found:
-                        break
                     for point in group:
                         if distance(point, location) < 5:
                             group.append(location)
-                            found = True
                             break
-                if found:
-                    found = False
+                    else:
+                        continue
+                    break
                 else:
                     nodelist.append([location])
                     
@@ -58,16 +65,11 @@ def main():
         tmp["group"] = group
         avg.append(tmp)
 
-    #create the lines lists
-    redlist.sort(key = lambda x : (x[1], x[0]))
-    greenlist.sort(key = lambda x : (x[0], x[1]))
-    bluelist.sort(key = lambda x : x[0] + x[1])
-    redlines = create_lines(redlist)
-    greenlines = create_lines(greenlist)
-    bluelines = create_lines(bluelist)
+    #print_lines(redlines + greenlines + bluelines + nodelist)
 
     #find the vortices
-    nodes = find_vortexes(avg)
+    nodes = find_vortexes(avg, image_name)
+
     nodes.sort(key = lambda x : (xs - x["coord"][0]) ** 2 + (ys - x["coord"][1]) ** 2)
 
     #create the dictionaries for the lines and label the colors
@@ -82,60 +84,70 @@ def main():
             line_dict["color"] = "blue"
         line_dict["coord"] = line
         line_dict["nodes"] = []
+        line_dict["node_coords"] = []
         for node in nodes:
             if node["coord"] in line:
                 line_dict["nodes"].append(node)
+                line_dict["node_coords"].append(node["coord"])
                 node["lines"].append(line_dict)
         lines.append(line_dict)
 
+    #remove the nodes from the images
+    for node in avg:
+        radius = 7
+        for i in range(-radius, radius):
+            for j in range(-radius, radius):
+                x = min(xs - 1, max(0, node["coord"][0] + i))
+                y = min(ys - 1, max(0, node["coord"][1] + j))
+                r[x, y] = 0
+                g[x, y] = 0
+                b[x, y] = 0
+
     #separate the segments
     segments = []
-    for line in lines:
-        points = line["coord"].copy()
         
-        for node in line["nodes"]:
-            point = node["coord"]
-            for i in range(-7, 7):
-                for j in range(-7, 7):
-                    if (point[0] + i, point[1] + j) in points:
-                        points.remove((point[0] + i, point[1] + j))
-        
-        for line_segment in create_lines_check_all(points):
-            segment = {}
-            segment["points"] = line_segment
-            segment["endpoints"] = []
-            segment["color"] = line["color"]
-            segment["line"] = line
+    for image in [r, g, b]:
+        n, labels = cv.connectedComponents(image)
+        if image is r:
+            color = "red"
+        if image is g:
+            color = "green"
+        if image is b:
+            color = "blue"
 
-            visited = []
-            count = 0
-            for point, node in itertools.product(line_segment, line["nodes"]):
-                coord = node["coord"]
-                if node in visited:
-                    continue
-                if distance(point, coord) < 15:
+        segment = [{"points" : [], "color" : color} for x in range(n - 1)]
+        for idx, x in np.ndenumerate(labels):
+            if x != 0:
+                segment[x - 1]["points"].append(idx)
+        segments += segment
+
+    delete = []
+    for segment in segments:
+        segment["endpoints"] = []
+        for node in nodes:
+            for point in segment["points"]:
+                if distance(node["coord"], point) < 10:
                     segment["endpoints"].append(node)
-                    visited.append(node)
-                    if count == 0:
-                        count += 1
-                    else:
-                        break
-            segments.append(segment)
+                    break
+        if len(segment["endpoints"]) == 0:
+            delete.append(segment)
+            continue
+        for line in lines:
+            if segment["endpoints"][0] in line["nodes"] and segment["color"] == line["color"]:
+                segment["line"] = line
+                break
 
-    #fix the segments
-    for segment in segments:
-        if len(segment["points"]) < 300:
-            fix_lines(segments, segment)
+    #clean the segments and the lines
+    for segment in delete:
+        segments.remove(segment)
+    for line in lines:
+        if len(line["nodes"]) == 0:
+            lines.remove(line)
 
-    """
-    accum = []
-    for segment in segments:
-        if segment["color"] == "green":
-            accum.append(segment["points"])
-        for endpoint in segment["endpoints"]:
-            accum.append([endpoint["coord"]])
-    print_lines(accum)
-    """
+    #print_lines([segment["points"] for segment in segments])
+    #print_lines([line["coord"] for line in lines])
+    #print_lines([segment["points"] for segment in segments])
+    
 
     #label the segments with values and colors
     nodes.sort(key = lambda x : (xs / 2 - x["coord"][0]) + (ys / 2 - x["coord"][1]))
@@ -178,12 +190,12 @@ def main():
                 change = 0
                 if search["vertex"] and neighbor["vertex"]:
                     if segment["color"] == "red":
-                        if neighbor["coord"][1] < search["coord"][1]:
+                        if neighbor["coord"][0] > search["coord"][0]:
                             change = 1
                         else:
                             change = -1
                     elif segment["color"] == "green":
-                        if neighbor["coord"][0] > search["coord"][0]:
+                        if neighbor["coord"][1] > search["coord"][1]:
                             change = 1
                         else:
                             change = -1
@@ -200,22 +212,18 @@ def main():
         visited.append(search)
         
     """
-    for i in range (-15, 15):
-        for line in lines:
-            if "value" in line:
-                if line["value"] == i and line["color"] == "blue":
-                    print(line["value"])
-                    tmp = line["coord"].copy()
-                    tmp.append((xs, ys))
-                    tmp.append((0, 0))
-                    print_lines([tmp])
+    for segment in lines:
+        print_lines_window([segment["coord"]], xs, ys)
+        print(segment["color"] + str(segment["value"]))
     """
 
-    #clean the segments that are too short
+    #clean the segments
     segments.sort(key = lambda x : len(x["points"]), reverse = True)
+    """
     for segment in segments:
-        if len(segment["endpoints"]) == 0:
+        if len(segment["endpoints"]) == 1:
             segments.remove(segment)
+    """
 
     #determine the knots
     for segment in segments:
@@ -243,7 +251,7 @@ def main():
         weight = np.ones_like(x)
         np.put(weight, endpoint_indexes, 100000000)
 
-        data_i = csaps(x, y, theta_i, smooth=0.9999, weights=weight)
+        data_i = csaps(x, y, theta_i, smooth=0.99, weights=weight)
         xi = data_i[0, :]
         yi = data_i[1, :]
 
@@ -281,17 +289,17 @@ def main():
         
         segment["knots"] = knot_points
 
-        #plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
-        #plt.show() 
+        plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+        plt.show() 
 
 
-
+    return
     #create the mesh
     mesh_points = set()
     for segment in segments:
         mesh_points = mesh_points.union(set(segment["knots"]))
 
-    create_mesh(segments, lines, mesh_points, xs, ys, "Weighted")
+    create_mesh(segments, lines, mesh_points, xs, ys, "Weighted_BSpline")
 
 
 
