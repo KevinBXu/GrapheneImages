@@ -227,6 +227,12 @@ def main():
         for endpt in segment["endpoints"]:
             all_points.append(endpt["coord"])
         tmp = sorted(all_points, key = lambda x : (endpoint[0] - x[0]) ** 2 + (endpoint[1] - x[1]) ** 2)
+
+        endpoint_indexes = []
+
+        for endpt in segment["endpoints"]:
+            endpoint_indexes.append(tmp.index(endpt["coord"]))
+
         y = [(), ()]
         x = np.linspace(0, 1, (len(tmp)))
         for point in tmp:
@@ -234,35 +240,50 @@ def main():
             y[1] = y[1]+ (point[1],)
 
         theta_i = np.linspace(0, 1, 200)
-        data_i = csaps(x, y, theta_i, smooth=0.999)
+        weight = np.ones_like(x)
+        np.put(weight, endpoint_indexes, 100000000)
+
+        data_i = csaps(x, y, theta_i, smooth=0.9999, weights=weight)
         xi = data_i[0, :]
         yi = data_i[1, :]
 
         parameter = x = np.linspace(0, 1, (len(xi)))
-        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.9999)
+        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.999)
 
         knots = scipy.interpolate.splev(tck[0], tck)
+        snd_spline = scipy.interpolate.splev(u, tck)
 
         #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x')
-
         #plt.show()
 
         knot_points = []
+
         for i in range(len(tck[0])):
             point = (knots[0][i], knots[1][i])
+            """
             redundant = False
             for knot_point in knot_points:
                 if distance(point, knot_point) < 2:
                     redundant = True
             if not redundant:
+            """
+            for endpt in segment["endpoints"]:
+                if distance(endpt["coord"], point) < 1:
+                    break
+            else:
                 knot_points.append(point)
+
         for endpt in segment["endpoints"]:
             if endpt is segment["endpoints"][0]:
                 knot_points.insert(0, endpt["coord"])
             else:
                 knot_points.append(endpt["coord"])
-
+        
         segment["knots"] = knot_points
+
+        #plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+        #plt.show() 
+
 
 
     #create the mesh
@@ -270,7 +291,7 @@ def main():
     for segment in segments:
         mesh_points = mesh_points.union(set(segment["knots"]))
 
-    create_mesh(segments, lines, mesh_points, xs, ys)
+    create_mesh(segments, lines, mesh_points, xs, ys, "Weighted")
 
 
 

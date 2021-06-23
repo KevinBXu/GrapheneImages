@@ -95,7 +95,7 @@ def print_lines(l):
     plt.show()
 
 #create the mesh
-def create_mesh(segments, lines, points, xs, ys):
+def create_mesh(segments, lines, points, xs, ys, mesh_name):
     point_dict = {}
     count = -1
     for point in points:
@@ -158,6 +158,6 @@ def create_mesh(segments, lines, points, xs, ys):
     gmsh.model.mesh.setAlgorithm(2, dtag, 1)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("")
-    gmsh.write("./MoireImages/Moire_9.msh")
-    gmsh.write("./MoireImages/Moire_9.vtk")
+    gmsh.write("./MoireImages/" + mesh_name + ".msh")
+    gmsh.write("./MoireImages/" + mesh_name + ".vtk")
     gmsh.finalize()
