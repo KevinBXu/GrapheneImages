@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 
-im = Image.open("./artificial_1bubbles.jpg")
+im = Image.open("./artificial_shear_iso.png")
 
 [xs, ys] = im.size
 
@@ -14,7 +14,7 @@ def convert(i):
     else:
         return 0
 
-cTRESHOLD = 50
+cTRESHOLD = 100
 
 for i in range(xs):
     for j in range (ys):
@@ -29,7 +29,7 @@ for i in range(xs):
         new_g = min(255 - red, 255 - blue)
         new_b = min(255 - red, 255 - green)
 
-        if max(new_r, new_g, new_b) - min(new_r, new_g, new_b) < 50:
+        if max(new_r, new_g, new_b) - min(new_r, new_g, new_b) < cTRESHOLD:
             new_r = convert(new_r)
             new_g = convert(new_g)
             new_b = convert(new_b)
@@ -46,4 +46,4 @@ for i in range(xs):
 
 im.show()
 
-im.save("./combined.PNG")
+im.save("./artificial_shear_iso_inverted.PNG")

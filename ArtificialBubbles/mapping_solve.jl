@@ -2,8 +2,8 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("./Moire_bspline.msh", renumber=true)
-writevtk(model, "Moire_bspline")
+model = GmshDiscreteModel("./Moire_artifical_shear_iso.msh")
+writevtk(model, "Moire_artificial_shear_iso")
 
 const ν = 0.0
 const λ = ν / ((1+ν)*(1-2ν))
@@ -21,15 +21,15 @@ dΩ = Measure(Ω, degree)
 
 # Basis vectors and reciprocal basis
 r = [2.46, 0]
-g = [-1/2 -√3/2; √3/2 -1/2]*r
-b = [-1/2 √3/2; -√3/2 -1/2]*r
+b = [-1/2 -√3/2; √3/2 -1/2]*r
+g = [-1/2 √3/2; -√3/2 -1/2]*r
 
 r⊥ = [0 1; -1 0] * r; r⊥ = r⊥ / (r⊥⋅b)
 g⊥ = [0 1; -1 0] * g; g⊥ = g⊥ / (g⊥⋅r)
 b⊥ = [0 1; -1 0] * b; b⊥ = b⊥ / (b⊥⋅g)
 
 
-lines = Dict("red" => -10:0, "green" => -7:5, "blue" => -12:0)
+lines = Dict("red" => -1:8, "green" => -4:8, "blue" => -12:0)
 dir = Dict("red" => VectorValue(r⊥),
            "green" => VectorValue(g⊥),
            "blue" => VectorValue(b⊥))
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"./ArtificialBubbles/results_bspline",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./results_shear_iso",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

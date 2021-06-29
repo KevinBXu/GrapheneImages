@@ -9,12 +9,25 @@ from helper import distance, sum, div, find_line, find_line_more, create_lines, 
 import cv2 as cv 
 
 
+image_name = "artificial_shear_iso_inverted.png"
+output = "Moire_artifical_shear_iso"
+
 def main():
-    image_name = "edited.png"
 
     im = cv.imread(image_name)
 
+    kernel = np.ones((5, 5), 'uint8')
+
+    im = cv.dilate(im, kernel, iterations=1)
+    #cv.imshow('Dilated Image', im)
+    #cv.waitKey(0) 
+
     b, g, r = cv.split(im)
+
+    im_gray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
+    ret, im_bw = cv.threshold(im_gray, 254, 255, cv.THRESH_BINARY)
+    #cv.imshow('Dilated Image', im_bw)
+    #cv.waitKey(0) 
 
     redlines, bluelines, greenlines = [], [], []
     for image in [r, g, b]:
@@ -37,26 +50,15 @@ def main():
 
     [xs, ys] = im.shape[:2]
 
-    nodelist, avg = [], []
-
-    #sort the pixels into proper colors
-    for i in range(xs):
-        for j in range (ys):
-            location = (i, j)
-            pixel = im[i, j]
-            if np.array_equal(pixel, [255, 255, 255]):
-                for group in nodelist:
-                    for point in group:
-                        if distance(point, location) < 5:
-                            group.append(location)
-                            break
-                    else:
-                        continue
-                    break
-                else:
-                    nodelist.append([location])
+    #find the nodes
+    n, labels = cv.connectedComponents(im_bw)
+    nodelist = [[] for x in range(n - 1)]
+    for idx, x in np.ndenumerate(labels):
+        if x != 0:
+            nodelist[x - 1].append(idx)
                     
     #average together the nodes
+    avg = []
     for group in nodelist:
         total = (0,0)
         for point in group:
@@ -141,8 +143,8 @@ def main():
         if len(line["nodes"]) == 0:
             lines.remove(line)
 
-    #print_lines([segment["points"] for segment in segments])
-    print_lines([line["coord"] for line in lines])
+    #print_lines([[node["coord"] for node in segment["endpoints"]] for segment in segments])
+    #print_lines([line["coord"] for line in lines])
 
     #label the segments with values and colors
     nodes.sort(key = lambda x : (xs / 2 - x["coord"][0]) + (ys / 2 - x["coord"][1]))
@@ -189,20 +191,24 @@ def main():
                             change = 1
                         else:
                             change = -1
+                        for line in other_lines:        
+                            if "value" not in line:
+                                if line["color"] == "green":
+                                    line["value"] = green - change
+                                elif line["color"] == "blue":
+                                    line["value"] = blue + change
                     elif segment["color"] == "green":
                         if neighbor["coord"][1] > search["coord"][1]:
                             change = 1
                         else:
                             change = -1
+                        for line in other_lines:        
+                            if "value" not in line:
+                                if line["color"] == "red":
+                                    line["value"] = red - change
+                                elif line["color"] == "blue":
+                                    line["value"] = blue + change
 
-                for line in other_lines:        
-                    if "value" not in line:
-                        if line["color"] == "red":
-                            line["value"] = red + change
-                        elif line["color"] == "green":
-                            line["value"] = green + change
-                        elif line["color"] == "blue":
-                            line["value"] = blue + change
                 pending.append(neighbor)
         visited.append(search)
         
@@ -212,6 +218,9 @@ def main():
         print(segment["color"] + str(segment["value"]))
     """
 
+    for node in nodes:
+        print([line["value"] for line in node["lines"]])
+  
     #clean the segments
     segments.sort(key = lambda x : len(x["points"]), reverse = True)
     """
@@ -246,7 +255,7 @@ def main():
 
         theta_i = np.linspace(0, 1, 200)
         weight = np.ones_like(x)
-        np.put(weight, endpoint_indexes, 100000000)
+        np.put(weight, endpoint_indexes, 1000000)
 
         data_i = csaps(x, y, theta_i, smooth=0.9, weights=weight)
         xi = data_i[0, :]
@@ -268,12 +277,12 @@ def main():
         #plt.show()
 
         parameter = x = np.linspace(0, 1, (len(xi)))
-        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.999)
+        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.01)
 
         knots = scipy.interpolate.splev(tck[0], tck)
         snd_spline = scipy.interpolate.splev(u, tck)
 
-        #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x', xi, yi, "-")
+        #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x', xi, yi, "-", [y[0][i] for i in endpoint_indexes], [y[1][i] for i in endpoint_indexes])
 
         #plt.show()
 
@@ -302,9 +311,9 @@ def main():
 
         segment["knots"] = knot_points
 
-        #plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+        plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
         #print_lines([knot_points] + [tmp])
-    #plt.show()
+    plt.show()
     #print_lines_window([segment["knots"] for segment in segments], xs, ys)
      
     #create the mesh
@@ -315,7 +324,18 @@ def main():
             if point not in mesh_points:
                 mesh_points.append(point)
 
-    create_mesh(segments, lines, mesh_points, xs, ys)
+    r_values = [segment["value"] for segment in segments if segment["color"] == "red"]
+    g_values = [segment["value"] for segment in segments if segment["color"] == "green"]
+    b_values = [segment["value"] for segment in segments if segment["color"] == "blue"]
+
+    print(min(r_values))
+    print(max(r_values))
+    print(min(g_values))
+    print(max(g_values))
+    print(min(b_values))
+    print(max(b_values))
+
+    create_mesh(segments, lines, mesh_points, ys, xs, output)
 
 
 

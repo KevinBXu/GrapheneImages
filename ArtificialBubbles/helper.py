@@ -107,24 +107,24 @@ def print_lines_window(l, xs, ys):
     plt.show()
 
 #create the mesh
-def create_mesh(segments, lines, points, xs, ys):
+def create_mesh(segments, lines, points, xs, ys, output):
     point_dict = {}
     count = -1
     for point in points:
         point_dict[point] = (count := count + 1) 
 
 
-    cLC = 1.0
+    cLC = 5.0
 
     gmsh.initialize()
 
     gmsh.model.add("Moire")
     #gmsh.option.set_number("Mesh.SaveAll", 1)
 
-    boundary_points = [(0, 0), (0, ys), (xs, ys), (xs, 0)]
+    boundary_points = [(-10, -10), (-10, ys + 10), (xs + 10, ys + 10), (xs + 10, -10)]
 
     for key in point_dict:
-        gmsh.model.geo.addPoint(key[0], key[1], 0, cLC, point_dict[key])
+        gmsh.model.geo.addPoint(key[1], ys - key[0], 0, cLC, point_dict[key])
 
     boundary = []
     loop = 0
@@ -158,7 +158,7 @@ def create_mesh(segments, lines, points, xs, ys):
             knot_indexes = []
             for point in segment["knots"]:
                 knot_indexes.append(point_dict[point])
-            spline_tags.append(gmsh.model.geo.addBSpline(knot_indexes))
+            spline_tags.append(gmsh.model.geo.addSpline(knot_indexes))
 
         gmsh.model.geo.synchronize()
         ltag = gmsh.model.addPhysicalGroup(1, spline_tags)
@@ -169,6 +169,6 @@ def create_mesh(segments, lines, points, xs, ys):
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("")
-    gmsh.write("./Moire_BSpline.msh")
-    gmsh.write("./Moire_BSpline.vtk")
+    gmsh.write("./" + output + ".msh")
+    gmsh.write("./" + output + ".vtk")
     gmsh.finalize()
