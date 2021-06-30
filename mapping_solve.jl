@@ -2,7 +2,7 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("./MoireImages/Weighted_BSpline.msh")
+model = GmshDiscreteModel("./MoireImages/Moire.msh")
 writevtk(model, "Moire")
 
 const ν = 0.0
@@ -29,7 +29,7 @@ g⊥ = [0 1; -1 0] * g; g⊥ = g⊥ / (g⊥⋅r)
 b⊥ = [0 1; -1 0] * b; b⊥ = b⊥ / (b⊥⋅g)
 
 
-lines = Dict("red" => -11:4, "green" => -2:10, "blue" => -13:12)
+lines = Dict("red" => -15:1, "green" => -12:0, "blue" => -11:0)
 dir = Dict("red" => VectorValue(r⊥),
            "green" => VectorValue(g⊥),
            "blue" => VectorValue(b⊥))
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"./MoireImages/Weighted_BSpline",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoireImages/results",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

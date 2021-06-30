@@ -1,28 +1,22 @@
 from PIL import Image
 
 def convert(i):
-    if i > 5:
+    if i > 0:
         return 255
     else:
-        return i
+        return 0
 
-im_red = Image.open("./av_extend_red_left.png")
+im_red = Image.open("./Images/red.png").convert("RGB")
 
-source = im_red.split()
+out_red = im_red.split()[0].point(convert)
 
-out_red = source[0].point(convert)
+im_green = Image.open("./Images/green.png").convert("RGB")
 
-im_green = Image.open("./av_extend_green_left.png")
+out_green = im_green.split()[1].point(convert)
 
-source = im_green.split()
+im_blue = Image.open("./Images/blue.png").convert("RGB")
 
-out_green = source[1].point(convert)
-
-im_blue = Image.open("./av_extend_blue_left.png")
-
-source = im_blue.split()
-
-out_blue = source[2].point(convert)
+out_blue = im_blue.split()[2].point(convert)
 
 source = (out_red, out_green, out_blue)
 

@@ -5,15 +5,22 @@ import itertools
 from csaps import csaps
 import scipy as scipy
 import numpy as np
-from helper import distance, sum, div, find_line, find_line_more, create_lines, create_lines_check_all, print_lines, create_mesh, fix_lines
+from helper import distance, sum, div, find_line, find_line_more, create_lines, create_lines_check_all, print_lines, create_mesh, fix_lines, euclidean
 import cv2 as cv
 
+image_name = "combined.png"
+output = "Moire_blue_only"
+
 def main():
-    image_name = "combined.png"
 
     im = cv.imread(image_name)
 
     b, g, r = cv.split(im)
+
+    im_gray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
+    ret, im_bw = cv.threshold(im_gray, 254, 255, cv.THRESH_BINARY)
+    #cv.imshow('Dilated Image', im_bw)
+    #cv.waitKey(0) 
 
     redlines, bluelines, greenlines = [], [], []
     for image in [r, g, b]:
@@ -38,22 +45,12 @@ def main():
 
     nodelist, avg = [], []
 
-    #sort the pixels into proper colors
-    for i in range(xs):
-        for j in range (ys):
-            location = (i, j)
-            pixel = im[i, j]
-            if np.array_equal(pixel, [255, 255, 255]):
-                for group in nodelist:
-                    for point in group:
-                        if distance(point, location) < 5:
-                            group.append(location)
-                            break
-                    else:
-                        continue
-                    break
-                else:
-                    nodelist.append([location])
+    #find the nodes
+    n, labels = cv.connectedComponents(im_bw)
+    nodelist = [[] for x in range(n - 1)]
+    for idx, x in np.ndenumerate(labels):
+        if x != 0:
+            nodelist[x - 1].append(idx)
                     
     #average together the nodes
     for group in nodelist:
@@ -93,15 +90,19 @@ def main():
         lines.append(line_dict)
 
     #remove the nodes from the images
-    for node in avg:
-        radius = 7
+    for node in [node for group in nodelist for node in group]:
+        radius = 20
         for i in range(-radius, radius):
             for j in range(-radius, radius):
-                x = min(xs - 1, max(0, node["coord"][0] + i))
-                y = min(ys - 1, max(0, node["coord"][1] + j))
-                r[x, y] = 0
-                g[x, y] = 0
-                b[x, y] = 0
+                x = min(xs - 1, max(0, node[0] + i))
+                y = min(ys - 1, max(0, node[1] + j))
+                if euclidean((x, y), node) <= 7:
+                    r[x, y] = 0
+                    g[x, y] = 0
+                    b[x, y] = 0
+
+    #cv.imshow('Dilated Image', b)
+    #cv.waitKey(0) 
 
     #separate the segments
     segments = []
@@ -126,7 +127,7 @@ def main():
         segment["endpoints"] = []
         for node in nodes:
             for point in segment["points"]:
-                if distance(node["coord"], point) < 10:
+                if euclidean(node["coord"], point) < 15:
                     segment["endpoints"].append(node)
                     break
         if len(segment["endpoints"]) == 0:
@@ -144,7 +145,8 @@ def main():
         if len(line["nodes"]) == 0:
             lines.remove(line)
 
-    #print_lines([segment["points"] for segment in segments])
+    print_lines([segment["points"] for segment in segments if segment["color"] == "blue"] + [[node["coord"] for node in segment["endpoints"]] for segment in segments])
+    
     #print_lines([line["coord"] for line in lines])
     #print_lines([segment["points"] for segment in segments])
     
@@ -218,7 +220,7 @@ def main():
     """
 
     #clean the segments
-    segments.sort(key = lambda x : len(x["points"]), reverse = True)
+    segments.sort(key = lambda x : len(x["points"]), reverse = False)
     """
     for segment in segments:
         if len(segment["endpoints"]) == 1:
@@ -256,7 +258,7 @@ def main():
         yi = data_i[1, :]
 
         parameter = x = np.linspace(0, 1, (len(xi)))
-        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.999)
+        tck, u = scipy.interpolate.splprep([xi, yi], u=parameter, s=0.01)
 
         knots = scipy.interpolate.splev(tck[0], tck)
         snd_spline = scipy.interpolate.splev(u, tck)
@@ -288,18 +290,30 @@ def main():
                 knot_points.append(endpt["coord"])
         
         segment["knots"] = knot_points
+        
+        
+        if segment["color"] == "blue":
+            #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x', xi, yi, "-", [y[0][i] for i in endpoint_indexes], [y[1][i] for i in endpoint_indexes])
+            plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+    plt.show() 
 
-        plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
-        plt.show() 
-
-
-    return
     #create the mesh
     mesh_points = set()
     for segment in segments:
         mesh_points = mesh_points.union(set(segment["knots"]))
 
-    create_mesh(segments, lines, mesh_points, xs, ys, "Weighted_BSpline")
+    create_mesh(segments, lines, mesh_points, ys, xs, output)
+
+    r_values = [segment["value"] for segment in segments if segment["color"] == "red"]
+    g_values = [segment["value"] for segment in segments if segment["color"] == "green"]
+    b_values = [segment["value"] for segment in segments if segment["color"] == "blue"]
+
+    print(min(r_values))
+    print(max(r_values))
+    print(min(g_values))
+    print(max(g_values))
+    print(min(b_values))
+    print(max(b_values))
 
 
 
