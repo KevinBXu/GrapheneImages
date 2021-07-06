@@ -5,11 +5,11 @@ import itertools
 from csaps import csaps
 import scipy as scipy
 import numpy as np
-from helper import distance, sum, div, find_line, find_line_more, create_lines, create_lines_check_all, print_lines, create_mesh, fix_lines, euclidean
+from helper import distance, sum, div, print_lines, create_mesh, print_lines_window, euclidean
 import cv2 as cv
 
 image_name = "combined.png"
-output = "Moire_blue_only"
+output = "Moire_big_ends"
 
 def main():
 
@@ -19,8 +19,8 @@ def main():
 
     im_gray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
     ret, im_bw = cv.threshold(im_gray, 254, 255, cv.THRESH_BINARY)
-    #cv.imshow('Dilated Image', im_bw)
-    #cv.waitKey(0) 
+    cv.imshow('Dilated Image', im_gray)
+    cv.waitKey(0) 
 
     redlines, bluelines, greenlines = [], [], []
     for image in [r, g, b]:
@@ -101,9 +101,9 @@ def main():
                     g[x, y] = 0
                     b[x, y] = 0
 
-    #cv.imshow('Dilated Image', b)
-    #cv.waitKey(0) 
-
+    cv.imshow('Dilated Image', r + g + b)
+    cv.waitKey(0) 
+    
     #separate the segments
     segments = []
         
@@ -145,7 +145,7 @@ def main():
         if len(line["nodes"]) == 0:
             lines.remove(line)
 
-    print_lines([segment["points"] for segment in segments if segment["color"] == "blue"] + [[node["coord"] for node in segment["endpoints"]] for segment in segments])
+    #print_lines([segment["points"] for segment in segments if segment["color"] == "blue"] + [[node["coord"] for node in segment["endpoints"]] for segment in segments])
     
     #print_lines([line["coord"] for line in lines])
     #print_lines([segment["points"] for segment in segments])
@@ -189,45 +189,67 @@ def main():
                     if line["color"] != segment["color"]:
                         other_lines.append(line)
 
-                change = 0
-                if search["vertex"] and neighbor["vertex"]:
+                if search["vertex"] == neighbor["vertex"]:
                     if segment["color"] == "red":
                         if neighbor["coord"][0] > search["coord"][0]:
                             change = 1
                         else:
                             change = -1
+                        for line in other_lines:        
+                            if "value" not in line:
+                                if line["color"] == "green":
+                                    line["value"] = green - change
+                                elif line["color"] == "blue":
+                                    line["value"] = blue + change
                     elif segment["color"] == "green":
                         if neighbor["coord"][1] > search["coord"][1]:
                             change = 1
                         else:
                             change = -1
-
-                for line in other_lines:        
-                    if "value" not in line:
-                        if line["color"] == "red":
-                            line["value"] = red + change
-                        elif line["color"] == "green":
-                            line["value"] = green + change
-                        elif line["color"] == "blue":
-                            line["value"] = blue + change
+                        for line in other_lines:        
+                            if "value" not in line:
+                                if line["color"] == "red":
+                                    line["value"] = red + change
+                                elif line["color"] == "blue":
+                                    line["value"] = blue - change
+                else:
+                    for line in other_lines:
+                        if "value" not in line:
+                            if line["color"] == "red":
+                                line["value"] = red
+                            elif line["color"] == "green":
+                                line["value"] = green
+                            elif line["color"] == "blue":
+                                line["value"] = blue
+                
                 pending.append(neighbor)
         visited.append(search)
-        
-    """
-    for segment in lines:
-        print_lines_window([segment["coord"]], xs, ys)
-        print(segment["color"] + str(segment["value"]))
-    """
+    
 
     #clean the segments
     segments.sort(key = lambda x : len(x["points"]), reverse = False)
-    """
-    for segment in segments:
-        if len(segment["endpoints"]) == 1:
-            segments.remove(segment)
-    """
+    
+    for node in nodes:
+        print([line["value"] for line in node["lines"]])
 
-    #determine the knots
+    delete = []
+    for segment in segments:
+        if len(segment["endpoints"]) == 1 and len(segment["points"]) < 1000:
+            delete.append(segment)
+            
+    for segment in delete:
+        segments.remove(segment)
+
+    """
+    for color in ["green"]:
+        temp = sorted([line for line in lines if line["color"] == color], key = lambda x : x["value"])
+        for line in temp:
+            print(line["color"] + str(line["value"]))
+            print_lines_window([line["coord"]], xs, ys)
+    """
+    
+
+    #determine the knots of the spline
     for segment in segments:
         segment["value"] = segment["line"]["value"]
         
@@ -292,11 +314,15 @@ def main():
         segment["knots"] = knot_points
         
         
-        if segment["color"] == "blue":
-            #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x', xi, yi, "-", [y[0][i] for i in endpoint_indexes], [y[1][i] for i in endpoint_indexes])
-            plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+        #plt.plot(y[0], y[1], '.', knots[0], knots[1], 'x', xi, yi, "-", [y[0][i] for i in endpoint_indexes], [y[1][i] for i in endpoint_indexes])
+        plt.plot(y[0], y[1], '.', [knot[0] for knot in segment["knots"]], [knot[1] for knot in segment["knots"]], 'x', xi, yi, "-", snd_spline[0], snd_spline[1], "-")
+    
+    ax = plt.gca() #you first need to get the axis handle
+    ax.set_aspect(1) #sets the height to width ratio to 1.5. 
+    plt.xlim([0, xs])
+    plt.ylim([0, ys])
     plt.show() 
-
+    return
     #create the mesh
     mesh_points = set()
     for segment in segments:

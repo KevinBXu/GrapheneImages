@@ -2,7 +2,7 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("./MoireImages/Moire.msh")
+model = GmshDiscreteModel("./MoireImages/Moire_big_ends.msh")
 writevtk(model, "Moire")
 
 const ν = 0.0
@@ -16,7 +16,7 @@ V0 = TestFESpace(model, reffe; conformity=:H1)
 U0 = TrialFESpace(V0)
 
 degree = 2order
-Ω = Triangulation(model)S
+Ω = Triangulation(model)
 dΩ = Measure(Ω, degree)
 
 # Basis vectors and reciprocal basis
@@ -29,7 +29,7 @@ g⊥ = [0 1; -1 0] * g; g⊥ = g⊥ / (g⊥⋅r)
 b⊥ = [0 1; -1 0] * b; b⊥ = b⊥ / (b⊥⋅g)
 
 
-lines = Dict("red" => -15:1, "green" => -12:0, "blue" => -11:0)
+lines = Dict("red" => -18:1, "green" => 0:13, "blue" => -12:16)
 dir = Dict("red" => VectorValue(r⊥),
            "green" => VectorValue(g⊥),
            "blue" => VectorValue(b⊥))
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"./MoireImages/results",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoireImages/results_big_ends",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

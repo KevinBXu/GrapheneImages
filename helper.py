@@ -27,75 +27,18 @@ def div(p, c):
     y = round(p[1] / c)
     return (x,y)
 
-#find the points that belong to a line
-def find_line(point, lines, radius):
-    for line in lines:
-        if distance(point, line[len(line) - 1]) < radius:
-            line.append(point)
-            return True
-    return False
-
-#find the points that belong to a line, except it checks num amount of points in the line
-def find_line_more(point, lines, num, radius):
-    for i in range(1, num):
-        for line in lines:
-            index = len(line) - i 
-            if index < 0:
-                continue
-            if distance(point, line[index]) < radius:
-                line.append(point)
-                return
-    lines.append([point])
-    return
-
-#returns a list of lines
-#runs find_line_more if find_line fails to assign a point to a line
-def create_lines(lists):
-    lines = []
-    lines.append([lists[0]])
-    for i in range(1, len(lists)):
-        point = lists[i]
-        if not find_line(point, lines, cRADIUS):
-            if i <= cLINE_TRESHOLD:
-                lines.append([point])
-            else: 
-                find_line_more(point, lines, cCHECK_POINTS, cRADIUS)
-    return lines
-
-#returns a list of lines
-#runs find_line_more no matter what
-def create_lines_check_all(lists):
-    lines = []
-    start = lists[0]
-    lines.append([start])
-    tmp = lists.copy()
-    tmp.sort(key = lambda x : abs(start[0] - x[0]) + abs(start[1] - x[1]))
-    for i in range(1, len(tmp)):
-        point = tmp[i]
-        if not find_line(point, lines, 7):
-            find_line_more(point, lines, len(lines), 7)
-    return lines
-
-#recursively fixes the lines in the case that one segment did not catch
-def fix_lines(neighbors, segment):
-    for neighbor in neighbors:
-            if segment["line"] == neighbor["line"] and neighbor != segment:
-                for seg_pt in segment["points"]:
-                    for nei_pt in neighbor["points"]:
-                        if distance(seg_pt, nei_pt) < 3:
-                            for endpoint in segment["endpoints"]:
-                                if endpoint not in neighbor["endpoints"]:
-                                    neighbor["endpoints"].append(endpoint)
-                            neighbor["points"] += segment["points"]
-                            neighbors.remove(segment)
-                            fix_lines(neighbors, neighbor)
-                            return
-    return
-
 #print the lines using pyplot
 def print_lines(l):
     for line in l:
         plt.scatter(*zip(*(line)), s=0.25)
+    plt.show()
+
+#overloaded function
+def print_lines_window(l, xs, ys):
+    for line in l:
+        plt.scatter(*zip(*(line)), s=0.25)
+    plt.xlim([0, xs])
+    plt.ylim([0, ys])
     plt.show()
 
 #create the mesh
@@ -145,8 +88,6 @@ def create_mesh(segments, lines, points, xs, ys, mesh_name):
     for line in lines:
         if "value" not in line:
             continue
-        if line["color"] != "blue":
-                continue
         spline_tags = []
         for segment in segments:
             if segment["line"] != line:
