@@ -5,11 +5,11 @@ import itertools
 from csaps import csaps
 import scipy as scipy
 import numpy as np
-from helper import distance, sum, div, print_lines, create_mesh, print_lines_window, euclidean
+from helper import distance, add, div, print_lines, create_mesh, print_lines_window, euclidean
 import cv2 as cv
 
 image_name = "combined.png"
-output = "Moire_big_ends"
+output = "Moire_algorithm"
 
 def main():
 
@@ -19,8 +19,8 @@ def main():
 
     im_gray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
     ret, im_bw = cv.threshold(im_gray, 254, 255, cv.THRESH_BINARY)
-    cv.imshow('Dilated Image', im_gray)
-    cv.waitKey(0) 
+    #cv.imshow('Dilated Image', im_gray)
+    #cv.waitKey(0) 
 
     redlines, bluelines, greenlines = [], [], []
     for image in [r, g, b]:
@@ -56,7 +56,7 @@ def main():
     for group in nodelist:
         total = (0,0)
         for point in group:
-            total = sum(total, point)
+            total = add(total, point)
         tmp = {}
         tmp["coord"] = div(total, len(group))
         tmp["group"] = group
@@ -101,8 +101,8 @@ def main():
                     g[x, y] = 0
                     b[x, y] = 0
 
-    cv.imshow('Dilated Image', r + g + b)
-    cv.waitKey(0) 
+    #cv.imshow('Dilated Image', r + g + b)
+    #cv.waitKey(0) 
     
     #separate the segments
     segments = []
@@ -159,78 +159,62 @@ def main():
     pending = [first]
     visited = []
 
-    while True:
-        if pending == []:
+    #find a neighboring node
+    for segment in segments:
+        if first in segment["endpoints"] and segment["color"] == "red":
+            for endpoint in segment["endpoints"]:
+                if endpoint is not first:
+                    second = endpoint
             break
+    
+    init = 1
+    for line in second["lines"]:
+        if "value" not in line:
+            line["value"] = init
+            init = -1
+
+    computed = [first, second]
+    
+    while pending != []:
         search = pending.pop(0)
         if search in visited:
             continue 
-
-        red = 0
-        green = 0 
-        blue = 0
-        for line in search["lines"]:
-            if line["color"] == "red":
-                red = line["value"]
-            elif line["color"] == "green":
-                green = line["value"]
-            elif line["color"] == "blue":
-                blue = line["value"]
-
-        for segment in segments:
-            if len(segment["endpoints"]) == 2 and search in segment["endpoints"] and segment["color"] != "blue":
-                if segment["endpoints"][0] == search:
-                    neighbor = segment["endpoints"][1]
-                else:
-                    neighbor = segment["endpoints"][0]
-
-                other_lines = []
-                for line in neighbor["lines"]:
-                    if line["color"] != segment["color"]:
-                        other_lines.append(line)
-
-                if search["vertex"] == neighbor["vertex"]:
-                    if segment["color"] == "red":
-                        if neighbor["coord"][0] > search["coord"][0]:
-                            change = 1
-                        else:
-                            change = -1
-                        for line in other_lines:        
-                            if "value" not in line:
-                                if line["color"] == "green":
-                                    line["value"] = green - change
-                                elif line["color"] == "blue":
-                                    line["value"] = blue + change
-                    elif segment["color"] == "green":
-                        if neighbor["coord"][1] > search["coord"][1]:
-                            change = 1
-                        else:
-                            change = -1
-                        for line in other_lines:        
-                            if "value" not in line:
-                                if line["color"] == "red":
-                                    line["value"] = red + change
-                                elif line["color"] == "blue":
-                                    line["value"] = blue - change
-                else:
-                    for line in other_lines:
-                        if "value" not in line:
-                            if line["color"] == "red":
-                                line["value"] = red
-                            elif line["color"] == "green":
-                                line["value"] = green
-                            elif line["color"] == "blue":
-                                line["value"] = blue
-                
-                pending.append(neighbor)
         visited.append(search)
-    
+
+        connecting = [segment for segment in segments if search in segment["endpoints"] and len(segment["endpoints"]) == 2]
+        neighbors = [endpoint for segment in connecting for endpoint in segment["endpoints"] if endpoint is not search and endpoint not in computed]
+        pending = pending + [neighbor for neighbor in neighbors if neighbor not in pending]
+
+        while neighbors != []:
+            neighbor = neighbors.pop(0)
+            known_lines = [line for line in neighbor["lines"] if "value" in line]
+            values = [line["value"] for line in known_lines]
+            if len(known_lines) == 3:
+                computed.append(neighbor)
+            elif len(known_lines) == 2:
+                unknown_line = [line for line in neighbor["lines"] if "value" not in line][0]
+                unknown_line["value"] = -sum(values)
+                computed.append(neighbor)
+            elif len(known_lines) == 1:
+                if neighbors == []:
+                    continue
+                else:
+                    neighbors.append(neighbor)
+            elif len(known_lines) == 0:
+                raise Exception("Not enough lines known")
+
 
     #clean the segments
     segments.sort(key = lambda x : len(x["points"]), reverse = False)
     
-    for node in nodes:
-        print([line["value"] for line in node["lines"]])
+    """
+    delete = []
+    for line in lines:
+        if "value" not in line:
+            delete.append(line)
+    for line in delete:
+        lines.remove(line)
+    """
 
     delete = []
     for segment in segments:
@@ -241,16 +225,22 @@ def main():
         segments.remove(segment)
 
     """
-    for color in ["green"]:
+    for node in nodes:
+        print([line["value"] for line in node["lines"] if "value" in line])
+
+    for color in ["red", "green", "blue"]:
         temp = sorted([line for line in lines if line["color"] == color], key = lambda x : x["value"])
         for line in temp:
             print(line["color"] + str(line["value"]))
             print_lines_window([line["coord"]], xs, ys)
     """
     
-
+    delete = []
     #determine the knots of the spline
     for segment in segments:
+        if "value" not in segment["line"]:
+            delete.append(segment)
+            continue
         segment["value"] = segment["line"]["value"]
         
         # fit the splines
@@ -322,7 +312,10 @@ def main():
     plt.xlim([0, xs])
     plt.ylim([0, ys])
     plt.show() 
-    return
+
+    for segment in delete:
+        segments.remove(segment)
+
     #create the mesh
     mesh_points = set()
     for segment in segments:

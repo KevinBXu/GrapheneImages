@@ -2,10 +2,6 @@ import gmsh
 import matplotlib.pyplot as plt
 import math
 
-cLINE_TRESHOLD = 300
-cRADIUS = 10
-cCHECK_POINTS = 100
-
 #find the distance between two (x, y) coordinates using the max metric
 def distance(p1, p2):
     x = abs(p1[0]-p2[0])
@@ -16,7 +12,7 @@ def euclidean(p1, p2):
     return (math.sqrt((p1[0]-p2[0]) ** 2 + (p1[1]-p2[1]) ** 2))
 
 #add two cartesian coordinates
-def sum(p1, p2):
+def add(p1, p2):
     x = p1[0]+p2[0]
     y = p1[1]+p2[1]
     return (x,y)
