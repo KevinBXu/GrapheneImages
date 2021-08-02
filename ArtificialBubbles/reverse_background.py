@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 
-im = Image.open("./artificial_shear_iso.png")
+im = Image.open("./iso_background.png")
 
 [xs, ys] = im.size
 
@@ -46,4 +46,4 @@ for i in range(xs):
 
 im.show()
 
-im.save("./artificial_shear_iso_inverted.PNG")
+im.save("./iso_background_inverted.PNG")

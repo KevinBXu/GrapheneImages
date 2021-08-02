@@ -2,7 +2,7 @@ using Gridap
 using GridapGmsh
 
 # Clockwise means clockwise from red to green
-clockwise = false
+clockwise = true
 
 model = GmshDiscreteModel("./MoSe2BNMoSe2/Moire_MoSe.msh")
 writevtk(model, "Moire")
@@ -22,7 +22,7 @@ degree = 2order
 dΩ = Measure(Ω, degree)
 
 # Basis vectors and reciprocal basis
-r = [0.0728, -0.0783]
+r =  [0.0728, -0.0783]
 
 if clockwise
   g = [-1/2 √3/2; -√3/2 -1/2]*r
@@ -105,7 +105,7 @@ end
 
 
 
-writevtk(Ω,"./MoSe2BNMoSe2/results",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoSe2BNMoSe2/results_flipped_chirality",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

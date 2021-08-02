@@ -18,13 +18,13 @@ im_blue = Image.open("./blue.png").convert("RGB")
 
 out_blue = im_blue.split()[2].point(convert)
 
-source = (out_red, out_green, out_blue)
+source = (out_green, out_red, out_blue)
 
 im = Image.merge("RGB", source)
 
 im.show()
 
-im.save("./combined.PNG")
+im.save("./combined_r_switch_g.PNG")
 
 
 

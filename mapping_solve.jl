@@ -1,8 +1,10 @@
 using Gridap
 using GridapGmsh
 
+# Clockwise means clockwise from red to green
+clockwise = false
 
-model = GmshDiscreteModel("./MoireImages/Moire_algorithm.msh")
+model = GmshDiscreteModel("./MoSe2BNMoSe2/Moire_MoSe.msh")
 writevtk(model, "Moire")
 
 const ν = 0.0
@@ -20,16 +22,21 @@ degree = 2order
 dΩ = Measure(Ω, degree)
 
 # Basis vectors and reciprocal basis
-r = [-0.3408, 0.0247]
-g = [-1/2 -√3/2; √3/2 -1/2]*r
-b = [-1/2 √3/2; -√3/2 -1/2]*r
+r = [0.0728, -0.0783]
+if clockwise
+  g = [-1/2 √3/2; -√3/2 -1/2]*r
+  b = [-1/2 -√3/2; √3/2 -1/2]*r
+else
+  g = [-1/2 -√3/2; √3/2 -1/2]*r
+  b = [-1/2 √3/2; -√3/2 -1/2]*r
+end
 
 r⊥ = [0 1; -1 0] * r; r⊥ = r⊥ / (r⊥⋅b)
 g⊥ = [0 1; -1 0] * g; g⊥ = g⊥ / (g⊥⋅r)
 b⊥ = [0 1; -1 0] * b; b⊥ = b⊥ / (b⊥⋅g)
 
 
-lines = Dict("red" => -18:0, "green" => 0:13, "blue" => -11:16)
+lines = Dict("red" => 0:1, "green" => -5:1, "blue" => 0:5)
 dir = Dict("red" => VectorValue(r⊥),
            "green" => VectorValue(g⊥),
            "blue" => VectorValue(b⊥))
@@ -97,7 +104,7 @@ end
 
 
 
-writevtk(Ω,"./MoireImages/results_algorithm",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./MoSe2BNMoSe2/results.vtu",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 

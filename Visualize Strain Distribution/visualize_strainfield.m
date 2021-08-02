@@ -24,22 +24,23 @@ function [rgb_img,cont_img, strainfig]=visualize_strainfield(xcomp, ycomp, a_mag
 
 a = a_mag/scale*[a_dir_r.',a_dir_g.'];
       
-      % Definitions of the RGB lines
+     % Definitions of the RGB lines
 %line_1: a*x + b*y = 0; a = a_sc(1,1), b = a_sc(2,1)
-a1 =  a(2,2);
-b1 = -a(1,2);
-d_l1 = @(r) abs(a1*r(1) + b1*r(2))/sqrt(a1^2 + b1^2);
+a1 =  a(2,1);
+b1 = -a(1,1);
+d_l1 = @(r) abs(a1*r(1) + b1*r(2))/sqrt(a1^2 + b1^2); %Distance from point r to line1 
 
 %line_2: a*x + b*y = 0; a = a_sc(1,2), b = a_sc(2,2)
-a2 =  a(2,2);
+a2 =  -a(2,2);
 b2 =  a(1,2);
 d_l2 = @(r) abs(a2*r(1) + b2*r(2))/sqrt(a2^2 + b2^2);
 
-%line_3: y = c : c = (a_sc(1,1) + a_sc(1,2))/2 
-c3 = 0;
-d_l3 = @(r) abs(r(2) - c3);
+%line_3: 
+a3 =  -a1-a2;
+b3 =  -b1-b2;
+d_l3 = @(r) abs(a3*r(1) + b3*r(2))/sqrt(a3^2 + b3^2);
    
-sigma = 0.1; % smearing of colored segments
+sigma = 0.2; % smearing of colored segments
 
       
 inv_a = a^-1;
@@ -76,9 +77,19 @@ for x_idx = r_mesh_x(1,:)
                 d3_h = min(d_l3(b_h_mod+sc_h),d3_h);
             end
         end
-        rgb_h = [1 - exp(-min(d1_h,d2_h).^2/sigma.^2)
-                 1 - exp(-min(d2_h,d3_h).^2/sigma.^2)
-                 1 - exp(-min(d3_h,d1_h).^2/sigma.^2)];
+%         rgb_h = [1 - exp(-min(d2_h,d3_h).^2/sigma.^2)
+%                  1 - exp(-min(d3_h,d1_h).^2/sigma.^2)
+%                  1 - exp(-min(d1_h,d2_h).^2/sigma.^2)];
+        
+        
+%         rgb_h = [exp(-d1_h.^2/sigma.^2)
+%                  exp(-d2_h.^2/sigma.^2)
+%                  exp(-d3_h.^2/sigma.^2)];
+            
+        rgb_h = [cutoff(d1_h)
+                 cutoff(d2_h)
+                 cutoff(d3_h)];
+             
         
        %Create a rainbow coloring for the vector
        b_h_hex=round(inv_a*b_h);
@@ -101,4 +112,12 @@ for x_idx = r_mesh_x(1,:)
 end
 [uni, iso, shear, twist, strainfig]=strain_from_u(xcomp, ycomp);
 
+end
+
+function [color] = cutoff(x)
+if x <= 0.1
+    color = 255;
+else
+    color = 0;
+end
 end

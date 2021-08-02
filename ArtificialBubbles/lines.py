@@ -9,8 +9,8 @@ from helper import distance, sum, div, find_line, find_line_more, create_lines, 
 import cv2 as cv 
 
 
-image_name = "artificial_shear_iso_inverted.png"
-output = "Moire_artifical_shear_iso"
+image_name = "iso_background_inverted.png"
+output = "iso"
 
 def main():
 
@@ -26,6 +26,9 @@ def main():
 
     im_gray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
     ret, im_bw = cv.threshold(im_gray, 254, 255, cv.THRESH_BINARY)
+
+    kernel = np.ones((3, 3), 'uint8')
+    im_bw = cv.dilate(im_bw, kernel, iterations=1)
     #cv.imshow('Dilated Image', im_bw)
     #cv.waitKey(0) 
 

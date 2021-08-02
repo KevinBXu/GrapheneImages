@@ -2,7 +2,7 @@ using Gridap
 using GridapGmsh
 
 
-model = GmshDiscreteModel("./Moire_artifical_shear_iso.msh")
+model = GmshDiscreteModel("./ArtificialBubbles/Moire_iso_background.msh")
 writevtk(model, "Moire_artificial_shear_iso")
 
 const ν = 0.0
@@ -97,7 +97,7 @@ end
 
 
 
-writevtk(Ω,"./results_shear_iso",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
+writevtk(Ω,"./results_iso_background",cellfields=["u"=>u1h, # "uh"=>uh, "urh"=>uh⋅dir["red"],
       "ur"=>u1h⋅dir["red"],  "ug"=>u1h⋅dir["green"], "ub"=>u1h⋅dir["blue"],
       "twist"=>twist(u1h),"shear"=>shear(u1h),"isotropic"=>isotropic(u1h),"uniaxial"=>uniaxial(u1h)])
 
